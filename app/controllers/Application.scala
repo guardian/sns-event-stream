@@ -1,6 +1,7 @@
 package controllers
 
 import grizzled.slf4j.Logging
+import play.api.libs.json.Json
 import sns.{NotificationMessage, SubscriptionConfirmationMessage, SnsMessage}
 
 import play.api._
@@ -33,32 +34,37 @@ object Application extends Controller with Logging {
     * to that port to IPs within the ranges specified here -- https://forums.aws.amazon.com/ann.jspa?annID=2347 -- so
     * that we're certain the only requests that come in are from SNS.
     */
-  def broadcast = Action(parse.json[SnsMessage]) { implicit request =>
-    request.body match {
-      case message: SubscriptionConfirmationMessage =>
-        logger.info("Received subscription confirmation message:")
-        logger.info(message)
+  def broadcast = Action { implicit request =>
+    request.body.asJson.flatMap(json => Json.fromJson[SnsMessage](json).asOpt) match {
+      case Some(message) => message match {
+        case message: SubscriptionConfirmationMessage =>
+          logger.info("Received subscription confirmation message:")
+          logger.info(message)
 
-        WS.client.url(message.SubscribeURL).get onComplete {
-          case Success(response) if response.status == 200 =>
-            logger.info("Successfully subscribed:")
-            logger.info(response.body)
+          WS.client.url(message.SubscribeURL).get onComplete {
+            case Success(response) if response.status == 200 =>
+              logger.info("Successfully subscribed:")
+              logger.info(response.body)
 
-          case Success(response) =>
-            logger.error(s"Error subscribing to ${message.SubscribeURL}: ${response.status} ${response.statusText}")
-            logger.error(response.body)
+            case Success(response) =>
+              logger.error(s"Error subscribing to ${message.SubscribeURL}: ${response.status} ${response.statusText}")
+              logger.error(response.body)
 
-          case Failure(error) =>
-            logger.error(s"Failed to subscribe to ${message.SubscribeURL}", error)
-        }
+            case Failure(error) =>
+              logger.error(s"Failed to subscribe to ${message.SubscribeURL}", error)
+          }
 
-        Ok
+          Ok
 
-      case notification: NotificationMessage =>
-        logger.info("Received notification message:")
-        logger.info(notification)
-        messagesChannel.push(notification.Message)
-        Ok
+        case notification: NotificationMessage =>
+          logger.info("Received notification message:")
+          logger.info(notification)
+          messagesChannel.push(notification.Message)
+          Ok
+      }
+
+      case None =>
+        BadRequest
     }
   }
 

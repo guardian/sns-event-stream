@@ -2,12 +2,14 @@ import com.amazonaws.regions.{Region, Regions}
 import com.amazonaws.services.sns.AmazonSNSAsyncClient
 import com.amazonaws.services.sns.model.SubscribeRequest
 import grizzled.slf4j.Logging
+import play.api.mvc.{Result, Handler, RequestHeader}
 import play.api.{Application, GlobalSettings}
 
 import ec2._
 import sns._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 object Global extends GlobalSettings with Logging {
@@ -28,7 +30,7 @@ object Global extends GlobalSettings with Logging {
       case Success(hostname) =>
         logger.info(s"According to EC2 my hostname is $hostname")
 
-        val url = s"http://$hostname/broadcast"
+        val url = s"http://$hostname:9000/broadcast"
 
         logger.info(s"Subscribing the SNS topic to POST to this endpoint: $url")
 
@@ -43,5 +45,16 @@ object Global extends GlobalSettings with Logging {
           case Failure(error) => logger.error("Error subscribing to SNS", error)
         }
     }
+  }
+
+  override def onRequestReceived(request: RequestHeader): (RequestHeader, Handler) = {
+    logger.info(s"Request received: ${request.method} ${request.uri}")
+    super.onRequestReceived(request)
+  }
+
+  override def onBadRequest(request: RequestHeader, error: String): Future[Result] = {
+    logger.info(s"Bad request, $error")
+
+    super.onBadRequest(request, error)
   }
 }
