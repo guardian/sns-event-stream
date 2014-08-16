@@ -317,11 +317,17 @@
                         "Fn::Join": ["", [
                             "#!/bin/bash -ev\n",
 
+                            "add-apt-repository ppa:webupd8team/java\n",
+
                             "apt-get -y update\n",
 
                             "locale-gen en_GB.UTF-8\n",
 
-                            "apt-get -y install openjdk-7-jre-headless unzip python-setuptools\n",
+                            "echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections\n",
+
+                            "apt-get -y install oracle-java8-installer unzip python-setuptools\n",
+
+                            "apt-get install oracle-java8-set-default\n",
 
                             "wget -P /root https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz","\n",
                             "mkdir -p /root/aws-cfn-bootstrap-latest","\n",

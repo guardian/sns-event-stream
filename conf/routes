@@ -9,7 +9,7 @@ GET        /                    controllers.Application.index
 GET        /assets/*file        controllers.Assets.at(path="/public", file)
 
 
-
+GET        /healthcheck         controllers.Application.healthcheck
 
 GET        /events              controllers.Application.events
 
