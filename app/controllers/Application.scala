@@ -27,8 +27,11 @@ object Application extends Controller with Logging {
 
   /** Endpoint that SNS broadcasts to
     *
-    * TODO: Signature confirmation? Or use a separate embedded webserver on a different port that you don't expose
-    * publicly (good practice to do that anyway).
+    * TODO: Must do signature verification.
+    *
+    * It might also be preferable to use a separate embedded webserver on another port for this, then restrict access
+    * to that port to IPs within the ranges specified here -- https://forums.aws.amazon.com/ann.jspa?annID=2347 -- so
+    * that we're certain the only requests that come in are from SNS.
     */
   def broadcast = Action(parse.json[SnsMessage]) { implicit request =>
     request.body match {

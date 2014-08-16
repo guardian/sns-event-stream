@@ -348,7 +348,7 @@
 
                             "cd /sns-event-stream\n",
                             "unzip sns-event-stream.zip\n",
-                            "sns-event-stream*/bin/sns-event-stream\n"
+                            "sns-event-stream*/bin/sns-event-stream >logs/stdout.log 2>&1\n"
                         ]]
                     }
                 }
@@ -389,9 +389,7 @@
                         "IpProtocol": "tcp",
                         "FromPort": "9000",
                         "ToPort": "9000",
-                        "SourceSecurityGroupId": {
-                            "Ref": "LoadBalancerSecurityGroup"
-                        }
+                        "CidrIp": "0.0.0.0/0"
                     },
                     {
                         "IpProtocol": "tcp",
