@@ -27,7 +27,8 @@ object Application extends Controller with Logging {
 
   /** Endpoint that SNS broadcasts to
     *
-    * TODO: Signature confirmation?
+    * TODO: Signature confirmation? Or use a separate embedded webserver on a different port that you don't expose
+    * publicly (good practice to do that anyway).
     */
   def broadcast = Action(parse.json[SnsMessage]) { implicit request =>
     request.body match {

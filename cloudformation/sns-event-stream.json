@@ -92,11 +92,11 @@
                                         "s3:GetObject"
                                     ],
                                     "Resource": [
-                                        {"Fn::Join": [
+                                        {"Fn::Join": ["", [
                                             "arn:aws:s3:::",
                                             {"Ref": "DistributionBucket"},
                                             "/*"
-                                        ]}
+                                        ]]}
                                     ]
                                 }
                             ]
@@ -187,7 +187,7 @@
             "Type": "AWS::SQS::Queue"
         },
 
-        "AutoscalingSnsTopic": {
+        "AutoscalingNotificationsSnsTopic": {
             "Type": "AWS::SNS::Topic",
             "Properties": {
                 "DisplayName": "SNS Event Stream autoscaling notifications topic",
@@ -211,11 +211,11 @@
                             "Sid": "Allow-SendMessage-To-Queue-From-Sns",
                             "Effect": "Allow",
                             "Principal": "*",
-                            "Action": ["sqs::SendMessage"],
+                            "Action": ["sqs:SendMessage"],
                             "Resource": "*",
                             "Condition": {
                                 "ArnEquals": {
-                                    "aws:SourceArn": {"Ref": "AutoscalingSnsTopic"}
+                                    "aws:SourceArn": {"Ref": "AutoscalingNotificationsSnsTopic"}
                                 }
                             }
                         }
@@ -256,11 +256,7 @@
                     }
                 ],
                 "NotificationConfiguration" : {
-                    "TopicARN" : {
-                        "Fn::FindInMap": ["StageVariables", {
-                            "Ref": "Stage"
-                        }, "AutoscalingNotificationsARN"]
-                    },
+                    "TopicARN" : {"Ref": "AutoscalingNotificationsSnsTopic"},
                     "NotificationTypes":  [
                         "autoscaling:EC2_INSTANCE_LAUNCH",
                         "autoscaling:EC2_INSTANCE_LAUNCH_ERROR",
@@ -293,13 +289,13 @@
                         },
 
                         "files": {
-                            "/sns-event-stream/sns-event-stream.jar": {
+                            "/sns-event-stream/sns-event-stream.zip": {
                                 "source": { "Fn::Join" : ["", [
-                                    "https://s3-eu-west-1.amazonaws.com/"
+                                    "https://s3-eu-west-1.amazonaws.com/",
                                     { "Ref": "DistributionBucket" },
                                     "/",
                                     { "Ref": "Stage" },
-                                    "/sns-event-stream/sns-event-stream.jar"
+                                    "/sns-event-stream/sns-event-stream.zip"
                                 ]]},
                                 "authentication": "distributionAuthentication"
                             }
@@ -325,9 +321,8 @@
 
                             "locale-gen en_GB.UTF-8\n",
 
-                            "apt-get -y install openjdk-7-jre-headless\n",
+                            "apt-get -y install openjdk-7-jre-headless unzip python-setuptools\n",
 
-                            "apt-get -y install python-setuptools\n",
                             "wget -P /root https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz","\n",
                             "mkdir -p /root/aws-cfn-bootstrap-latest","\n",
                             "tar xvfz /root/aws-cfn-bootstrap-latest.tar.gz --strip-components=1 -C /root/aws-cfn-bootstrap-latest","\n",
@@ -345,7 +340,9 @@
                             "chown sns-event-stream /sns-event-stream\n",
                             "chown sns-event-stream /sns-event-stream/*\n",
 
-                            "start sns-event-stream\n"
+                            "cd /sns-event-stream\n",
+                            "unzip sns-event-stream.zip\n",
+                            "sns-event-stream*/bin/sns-event-stream\n"
                         ]]
                     }
                 }
@@ -413,6 +410,16 @@
                     }
                 ]
             }
+        }
+    },
+
+    "Outputs": {
+        "LoadBalancerDNS": {
+            "Value": { "Fn::GetAtt": ["LoadBalancer", "DNSName"] }
+        },
+
+        "SnsTopicArn": {
+            "Value": { "Ref": "SnsTopic" }
         }
     }
 }

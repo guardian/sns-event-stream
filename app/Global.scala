@@ -26,7 +26,7 @@ object Global extends GlobalSettings with Logging {
         logger.error("Unable to look up ip in instance metadata - are you on EC2?", error)
 
       case Success(ipAddress) =>
-        val url = s"$ipAddress/broadcast"
+        val url = s"http://$ipAddress/broadcast"
 
         client.subscribeFuture(
           new SubscribeRequest().withEndpoint(url).withProtocol("http").withTopicArn(snsTopicArn)

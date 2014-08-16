@@ -13,7 +13,9 @@ object SnsMessage {
   }
 }
 
-sealed trait SnsMessage
+sealed trait SnsMessage {
+  val SigningCertURL: String
+}
 
 object SubscriptionConfirmationMessage {
   implicit val jsonReads = requireField("Type", JsString("SubscriptionConfirmation"))
