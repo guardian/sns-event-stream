@@ -26,7 +26,11 @@ object Global extends GlobalSettings with Logging {
         logger.error("Unable to look up ip in instance metadata - are you on EC2?", error)
 
       case Success(ipAddress) =>
+        logger.info(s"According to EC2 my IP address is $ipAddress")
+
         val url = s"http://$ipAddress/broadcast"
+
+        logger.info(s"Subscribing the SNS topic to POST to this endpoint: $url")
 
         client.subscribeFuture(
           new SubscribeRequest().withEndpoint(url).withProtocol("http").withTopicArn(snsTopicArn)
