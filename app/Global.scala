@@ -21,14 +21,14 @@ object Global extends GlobalSettings with Logging {
     val client = new AmazonSNSAsyncClient()
     client.setRegion(Region.getRegion(Regions.EU_WEST_1))
 
-    InstanceMetadata.localIpv4() onComplete {
+    InstanceMetadata.publicHostname() onComplete {
       case Failure(error) =>
-        logger.error("Unable to look up ip in instance metadata - are you on EC2?", error)
+        logger.error("Unable to look up hostname in instance metadata - are you on EC2?", error)
 
-      case Success(ipAddress) =>
-        logger.info(s"According to EC2 my IP address is $ipAddress")
+      case Success(hostname) =>
+        logger.info(s"According to EC2 my hostname is $hostname")
 
-        val url = s"http://$ipAddress/broadcast"
+        val url = s"http://$hostname/broadcast"
 
         logger.info(s"Subscribing the SNS topic to POST to this endpoint: $url")
 
