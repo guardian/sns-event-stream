@@ -1,0 +1,418 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "SNS Event Stream",
+    "Parameters": {
+        "KeyName": {
+            "Description": "SSH key name",
+            "Type": "String"
+        },
+
+        "InstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "t1.micro",
+            "AllowedValues": [
+                "t1.micro",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge",
+                "m2.xlarge",
+                "m2.2xlarge",
+                "m2.4xlarge",
+                "c1.medium",
+                "c1.xlarge",
+                "cc1.4xlarge",
+                "cc2.8xlarge",
+                "cg1.4xlarge"
+            ],
+            "ConstraintDescription": "must be a valid EC2 instance type."
+        },
+        "Stage": {
+            "Description": "CODE or PROD environment?",
+            "Type": "String",
+            "AllowedValues": [
+                "CODE",
+                "PROD"
+            ]
+        },
+        "MaxInstances" : {
+        	"Description": "Maximum number of instances. This should be double the desired capacity.",
+        	"Type": "Number",
+        	"Default": 2
+        },
+        "MinInstances" : {
+        	"Description": "Minimum number of instances",
+        	"Type": "Number",
+        	"Default": 1
+        },
+        "DesiredCapacity" : {
+        	"Description": "Desired number of instances.",
+        	"Type": "Number",
+        	"Default": 1
+        },
+        "VpcId": {
+            "Description": "ID of the VPC onto which to launch the application",
+            "Type": "String"
+        },
+        "VpcSubnets" : {
+            "Description": "Subnets to use in VPC",
+            "Type": "CommaDelimitedList"
+        },
+        "DistributionBucket": {
+            "Description": "Bucket where the application Jar is stored",
+            "Type": "String"
+        }
+    },
+
+    "Resources": {
+        "DistributionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [ {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": [ "ec2.amazonaws.com" ]
+                        },
+                        "Action": [ "sts:AssumeRole" ]
+                    } ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+
+                        "PolicyDocument": {
+                            "Version" : "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": [
+                                        {"Fn::Join": [
+                                            "arn:aws:s3:::",
+                                            {"Ref": "DistributionBucket"},
+                                            "/*"
+                                        ]}
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "subscriptions",
+
+                        "PolicyDocument": {
+                            "Version" : "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "sns:Subscribe"
+                                    ],
+                                    "Resource": [
+                                        {"Ref": "SnsTopic"}
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "notifications",
+
+                        "PolicyDocument": {
+                            "Version" : "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Resource": { "Fn::GetAtt": [
+                                        "AutoscalingNotificationsQueue",
+                                        "Arn"
+                                    ] },
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "SQS:GetQueueUrl",
+                                        "SQS:ReceiveMessage",
+                                        "SQS:DeleteMessage"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "DistributionInstanceProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Path": "/",
+                "Roles": [ {"Ref": "DistributionRole"} ]
+            }
+        },
+
+        "SnsTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "DisplayName": "Event Streams SNS topic"
+            }
+        },
+
+        "LoadBalancer": {
+            "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+            "Properties": {
+                "Listeners": [{
+                    "LoadBalancerPort": "80",
+                    "InstancePort": "9000",
+                    "Protocol": "HTTP"
+                }],
+                "CrossZone": "true",
+                "HealthCheck": {
+                    "Target": "HTTP:9000/healthcheck",
+                    "HealthyThreshold": "2",
+                    "UnhealthyThreshold": "10",
+                    "Interval": "30",
+                    "Timeout": "10"
+                },
+                "Subnets": { "Ref": "VpcSubnets" },
+                "SecurityGroups": [
+                    { "Ref": "LoadBalancerSecurityGroup" }
+                ]
+            }
+        },
+
+        "AutoscalingNotificationsQueue": {
+            "Type": "AWS::SQS::Queue"
+        },
+
+        "AutoscalingSnsTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "DisplayName": "SNS Event Stream autoscaling notifications topic",
+                "Subscription": [
+                    {
+                        "Endpoint": {"Fn::GetAtt": ["AutoscalingNotificationsQueue", "Arn"]},
+                        "Protocol": "sqs"
+                    }
+                ]
+            }
+        },
+
+        "AutoscalingNotificationsQueuePolicy": {
+            "Type": "AWS::SQS::QueuePolicy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Id": "AutoscalingNotificationsQueuePolicy",
+                    "Statement": [
+                        {
+                            "Sid": "Allow-SendMessage-To-Queue-From-Sns",
+                            "Effect": "Allow",
+                            "Principal": "*",
+                            "Action": ["sqs::SendMessage"],
+                            "Resource": "*",
+                            "Condition": {
+                                "ArnEquals": {
+                                    "aws:SourceArn": {"Ref": "AutoscalingSnsTopic"}
+                                }
+                            }
+                        }
+                    ]
+                },
+                "Queues": [
+                    {"Ref": "AutoscalingNotificationsQueue"}
+                ]
+            }
+        },
+
+        "AutoscalingGroup": {
+            "Type": "AWS::AutoScaling::AutoScalingGroup",
+            "Properties": {
+                "AvailabilityZones": { "Fn::GetAZs": "" },
+                "LaunchConfigurationName": { "Ref": "LaunchConfig" },
+                "MinSize": {"Ref": "MinInstances"},
+                "MaxSize": {"Ref": "MaxInstances"},
+                "DesiredCapacity": {"Ref": "DesiredCapacity"},
+                "HealthCheckType": "ELB",
+                "HealthCheckGracePeriod": 300,
+                "LoadBalancerNames": [ {"Ref": "LoadBalancer"} ],
+                "Tags": [
+                    {
+                        "Key": "Stack",
+                        "Value": "frontend",
+                        "PropagateAtLaunch": "true"
+                    },
+                    {
+                        "Key": "Stage",
+                        "Value": {"Ref": "Stage"},
+                        "PropagateAtLaunch": "true"
+                    },
+                    {
+                        "Key": "App",
+                        "Value": "sns-event-stream",
+                        "PropagateAtLaunch": "true"
+                    }
+                ],
+                "NotificationConfiguration" : {
+                    "TopicARN" : {
+                        "Fn::FindInMap": ["StageVariables", {
+                            "Ref": "Stage"
+                        }, "AutoscalingNotificationsARN"]
+                    },
+                    "NotificationTypes":  [
+                        "autoscaling:EC2_INSTANCE_LAUNCH",
+                        "autoscaling:EC2_INSTANCE_LAUNCH_ERROR",
+                        "autoscaling:EC2_INSTANCE_TERMINATE",
+                        "autoscaling:EC2_INSTANCE_TERMINATE_ERROR"
+                    ]
+                },
+                "VPCZoneIdentifier": {
+                    "Ref": "VpcSubnets"
+                }
+            }
+        },
+
+        "LaunchConfig": {
+            "Type": "AWS::AutoScaling::LaunchConfiguration",
+            "Metadata": {
+                "AWS::CloudFormation::Authentication" : {
+                    "distributionAuthentication" : {
+                        "type": "S3",
+                        "roleName": { "Ref": "DistributionRole" },
+                        "buckets": [{"Ref": "DistributionBucket"}]
+                    }
+                },
+                "AWS::CloudFormation::Init" : {
+                    "config": {
+                        "users": {
+                            "sns-event-stream": {
+                                "homeDir": "/sns-event-stream"
+                            }
+                        },
+
+                        "files": {
+                            "/sns-event-stream/sns-event-stream.jar": {
+                                "source": { "Fn::Join" : ["", [
+                                    "https://s3-eu-west-1.amazonaws.com/"
+                                    { "Ref": "DistributionBucket" },
+                                    "/",
+                                    { "Ref": "Stage" },
+                                    "/sns-event-stream/sns-event-stream.jar"
+                                ]]},
+                                "authentication": "distributionAuthentication"
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+                "KeyName": {"Ref": "KeyName"},
+                "ImageId": "ami-cb4986bc",
+                "SecurityGroups": [
+                    {"Ref": "InstanceSecurityGroup"}
+                ],
+                "InstanceType": {"Ref": "InstanceType"},
+                "AssociatePublicIpAddress": "True",
+                "IamInstanceProfile": {"Ref": "DistributionInstanceProfile"},
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": ["", [
+                            "#!/bin/bash -ev\n",
+
+                            "apt-get -y update\n",
+
+                            "locale-gen en_GB.UTF-8\n",
+
+                            "apt-get -y install openjdk-7-jre-headless\n",
+
+                            "apt-get -y install python-setuptools\n",
+                            "wget -P /root https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz","\n",
+                            "mkdir -p /root/aws-cfn-bootstrap-latest","\n",
+                            "tar xvfz /root/aws-cfn-bootstrap-latest.tar.gz --strip-components=1 -C /root/aws-cfn-bootstrap-latest","\n",
+                            "easy_install /root/aws-cfn-bootstrap-latest/","\n",
+
+                            "cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r LaunchConfig ",
+                            "    --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to run cfn-init'\n",
+
+                            "export SNS_TOPIC_ARN=", { "Ref": "SnsTopic" }, "\n",
+                            "export AUTOSCALING_NOTIFICATIONS_ARN=", { "Fn::GetAtt": [
+                                "AutoscalingNotificationsQueue",
+                                "Arn"
+                            ] }, "\n",
+
+                            "chown sns-event-stream /sns-event-stream\n",
+                            "chown sns-event-stream /sns-event-stream/*\n",
+
+                            "start sns-event-stream\n"
+                        ]]
+                    }
+                }
+            }
+        },
+
+        "LoadBalancerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "VpcId": { "Ref": "VpcId" },
+                "GroupDescription": "Open up HTTP access to load balancer",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "80",
+                        "ToPort": "80",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+                "SecurityGroupEgress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "9000",
+                        "ToPort": "9000",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+
+        "InstanceSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "VpcId": { "Ref": "VpcId" },
+                "GroupDescription": "Open up HTTP access to load balancer",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "9000",
+                        "ToPort": "9000",
+                        "SourceSecurityGroupId": {
+                            "Ref": "LoadBalancerSecurityGroup"
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+
+                "SecurityGroupEgress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "80",
+                        "ToPort": "80",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "443",
+                        "ToPort": "443",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        }
+    }
+}
