@@ -7,6 +7,7 @@ import play.api.{Application, GlobalSettings}
 import ec2._
 import sns._
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
 object Global extends GlobalSettings with Logging {

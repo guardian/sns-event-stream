@@ -17,7 +17,7 @@ sealed trait SnsMessage
 
 object SubscriptionConfirmationMessage {
   implicit val jsonReads = requireField("Type", JsString("SubscriptionConfirmation"))
-    .andThen(Json.reads[SubscriptionConfirmationMessage])
+    .flatMap(_ => Json.reads[SubscriptionConfirmationMessage])
 }
 
 case class SubscriptionConfirmationMessage(
@@ -35,7 +35,7 @@ case class SubscriptionConfirmationMessage(
 
 object NotificationMessage {
   implicit val jsonReads = requireField("Type", JsString("Notification"))
-    .andThen(Json.reads[NotificationMessage])
+    .flatMap(_ => Json.reads[NotificationMessage])
 }
 
 case class NotificationMessage(

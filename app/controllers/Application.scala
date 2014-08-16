@@ -1,15 +1,16 @@
 package controllers
 
 import grizzled.slf4j.Logging
+import sns.{NotificationMessage, SubscriptionConfirmationMessage, SnsMessage}
+
 import play.api._
 import play.api.libs.EventSource
 import play.api.libs.iteratee.Concurrent
 import play.api.libs.ws.WS
 import play.api.mvc._
+import play.api.Play.current
+
 import scala.concurrent.ExecutionContext.Implicits.global
-
-import sns.{NotificationMessage, SubscriptionConfirmationMessage, SnsMessage}
-
 import scala.util.{Failure, Success}
 
 object Application extends Controller with Logging {
