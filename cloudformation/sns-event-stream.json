@@ -138,7 +138,8 @@
                                 {
                                     "Effect": "Allow",
                                     "Action": [
-                                        "sns:Subscribe"
+                                        "sns:Subscribe",
+                                        "sns:Unsubscribe"
                                     ],
                                     "Resource": [
                                         {"Ref": "SnsTopic"}

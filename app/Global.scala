@@ -1,3 +1,4 @@
+import autoscaling.AutoscalingNotificationsQueueWorker
 import com.amazonaws.services.sns.model.SubscribeRequest
 import grizzled.slf4j.Logging
 import play.api.mvc.{Result, Handler, RequestHeader}
@@ -37,6 +38,8 @@ object Global extends GlobalSettings with Logging {
           case Failure(error) => logger.error("Error subscribing to SNS", error)
         }
     }
+
+    AutoscalingNotificationsQueueWorker.start()
   }
 
   override def onRequestReceived(request: RequestHeader): (RequestHeader, Handler) = {

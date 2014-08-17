@@ -14,7 +14,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-class AutoscalingNotificationsQueueWorker extends JsonQueueWorker[Notification] {
+object AutoscalingNotificationsQueueWorker extends JsonQueueWorker[Notification] {
   override val queue: JsonMessageQueue[Notification] =
     JsonMessageQueue[Notification](
       new AmazonSQSAsyncClient().withRegion(Region.getRegion(Regions.EU_WEST_1)),
