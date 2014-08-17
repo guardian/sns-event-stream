@@ -1,21 +1,21 @@
 SNS Event Stream
 ================
 
-Hooks up an SNS topic to server-sent events in JavaScript, allowing you to
-push messages to browsers by just publishing to an SNS topic.
+Application to wrap an SNS topic, providing an endpoint for JavaScript to poll
+events using [server-sent events](http://dev.w3.org/html5/eventsource/). 
 
-This will autoscale:
+Allows horizontal scaling, which is where most of the complexity comes in.
 
-* On start, register with the SNS topic, saying "this is my IP address, post
-  messages to me!"
-* Expose an endpoint to the loadbalancer, to which clients can connect and
-  wait for events to be sent
-* Follow a queue set up for autoscaling events, and on an EC2 box being taken
-  out of the autoscaling group, automatically unsubscribe that box from the
-  SNS topic
+## Lifecycle of a box
 
-TODO:
+* Looks up its own public hostname using EC2 metadata
+* Registers a subscription with the SNS topic for /broadcast on that hostname
+* Looks up its instance ID using EC2 metadata
+* Records its subscription ARN against its instance ID in DynamoDB
+* Polls an autoscaling notifications queue, automatically unsubscribing
+  instances that are killed due to autoscaling, then removing their data from
+  DynamoDB
 
-* What should healthcheck be based on? The number of connected clients? Might
-  need to do some experimentation to see what an ideal number is.
+Clients connect to /events. The body of the SNS notification will be sent as
+the body of the server-sent event.
 
