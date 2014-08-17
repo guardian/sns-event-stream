@@ -48,6 +48,6 @@ object StateTable {
   }
 
   def deleteSubscription(instanceId: InstanceId) = {
-    client.deleteItemFuture(new DeleteItemRequest().withKey(keyQuery(instanceId)))
+    client.deleteItemFuture(new DeleteItemRequest().withKey(keyQuery(instanceId)).withTableName(tableName))
   }
 }
