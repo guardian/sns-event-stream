@@ -1,0 +1,10 @@
+<ConfirmSubscriptionResponse xmlns="http://sns.amazonaws.com/doc/2010-03-31/">
+    <ConfirmSubscriptionResult>
+        <SubscriptionArn>
+            arn:aws:sns:eu-west-1:201359054765:SnsEventStreamCODE-AutoscalingNotificationsSnsTopic-4DDRF7Z22WQY:261ee134-2699-4a3d-8922-954d733d3634
+        </SubscriptionArn>
+    </ConfirmSubscriptionResult>
+    <ResponseMetadata>
+        <RequestId>153a5348-266b-594b-941f-1f225bca8627</RequestId>
+    </ResponseMetadata>
+</ConfirmSubscriptionResponse>

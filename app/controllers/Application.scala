@@ -1,8 +1,10 @@
 package controllers
 
+import dynamodb.StateTable
+import ec2.InstanceMetadata
 import grizzled.slf4j.Logging
 import play.api.libs.json.Json
-import sns.{NotificationMessage, SubscriptionConfirmationMessage, SnsMessage}
+import sns._
 
 import play.api._
 import play.api.libs.EventSource
@@ -26,6 +28,24 @@ object Application extends Controller with Logging {
     Ok
   }
 
+  private def recordArn(arn: SnsSubscriptionArn): Unit = {
+    InstanceMetadata.instanceId() onComplete {
+      case Success(instanceId) =>
+        logger.info(s"Successfully looked up instance ID: $instanceId")
+
+        StateTable.recordSubscription(instanceId, arn) onComplete {
+          case Success(_) =>
+            logger.info("Successfully recorded subscription in application state table")
+          case Failure(error) =>
+            logger.error("Unable to record subscription in application state table", error)
+        }
+
+      case Failure(error) =>
+        logger.error("Unable to look up instance ID through metadata", error)
+        logger.error("Could not record subscription in application state table")
+    }
+  }
+
   /** Endpoint that SNS broadcasts to
     *
     * TODO: Must do signature verification.
@@ -44,7 +64,9 @@ object Application extends Controller with Logging {
           WS.client.url(message.SubscribeURL).get onComplete {
             case Success(response) if response.status == 200 =>
               logger.info("Successfully subscribed:")
-              logger.info(response.body)
+              val arn = ConfirmationResponse.getSubscriptionArn(scala.xml.XML.loadString(response.body))
+              logger.info(s"Subscription ARN: $arn")
+              recordArn(arn)
 
             case Success(response) =>
               logger.error(s"Error subscribing to ${message.SubscribeURL}: ${response.status} ${response.statusText}")
