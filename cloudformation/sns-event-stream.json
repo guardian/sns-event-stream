@@ -61,10 +61,38 @@
         "DistributionBucket": {
             "Description": "Bucket where the application Jar is stored",
             "Type": "String"
+        },
+        "DynamoDBTableName": {
+            "Description": "Name of DynamoDB table in which to keep application state",
+            "Type": "String",
+            "Default": "SNSEventStreamState"
         }
     },
 
     "Resources": {
+        "DynamoDBTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "EC2InstanceId",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "EC2InstanceId",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": "1",
+                    "WriteCapacityUnits": "1"
+                },
+                "TableName": {"Ref": "DynamoDBTableName"}
+            }
+        },
+
         "DistributionRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -135,6 +163,28 @@
                                         "SQS:GetQueueUrl",
                                         "SQS:ReceiveMessage",
                                         "SQS:DeleteMessage"
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "state",
+
+                        "PolicyDocument": {
+                            "Version" : "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Resource": { "Fn::Join" :  [ "", [ "arn:aws:dynamodb:",
+                                        {"Ref": "AWS::Region"},
+                                        ":",
+                                        {"Ref": "AWS::AccountId"},
+                                        ":table/",
+                                        {"Ref" : "DynamoDBTable"}
+                                    ]]},
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "dynamodb:*"
                                     ]
                                 }
                             ]
@@ -335,6 +385,8 @@
                                 "AutoscalingNotificationsQueue",
                                 "Arn"
                             ] }, "\n",
+
+                            "export DYNAMO_DB_TABLE_NAME=", { "Ref": "DynamoDBTableName" }, "\n",
 
                             "cd /sns-event-stream\n",
                             "mkdir logs\n",

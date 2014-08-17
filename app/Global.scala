@@ -1,6 +1,7 @@
 import com.amazonaws.regions.{Region, Regions}
 import com.amazonaws.services.sns.AmazonSNSAsyncClient
 import com.amazonaws.services.sns.model.SubscribeRequest
+import dynamodb.StateTable
 import grizzled.slf4j.Logging
 import play.api.mvc.{Result, Handler, RequestHeader}
 import play.api.{Application, GlobalSettings}
@@ -39,6 +40,22 @@ object Global extends GlobalSettings with Logging {
         ) onComplete {
           case Success(response) if Option(response.getSubscriptionArn).isDefined =>
             logger.info(s"Subscription arn: ${response.getSubscriptionArn}")
+
+            InstanceMetadata.instanceId() onComplete {
+              case Success(instanceId) =>
+                logger.info(s"Successfully looked up instance ID: $instanceId")
+
+                StateTable.recordSubscription(instanceId, url) onComplete {
+                  case Success(_) =>
+                    logger.info("Successfully recorded subscription in application state table")
+                  case Failure(error) =>
+                    logger.error("Unable to record subscription in application state table", error)
+                }
+
+              case Failure(error) =>
+                logger.error("Unable to look up instance ID through metadata", error)
+                logger.error("Could not record subscription in application state table")
+            }
 
           case Success(_) => logger.info("Successfully sent subscription request to SNS topic")
 
