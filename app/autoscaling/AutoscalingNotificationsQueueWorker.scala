@@ -5,6 +5,7 @@ import com.amazonaws.services.sns.model.UnsubscribeRequest
 import com.amazonaws.services.sqs.AmazonSQSAsyncClient
 import dynamodb.StateTable
 import ec2.InstanceId
+import play.api.libs.json.Json
 import sqs.{JsonMessageQueue, Message, JsonQueueWorker, RichAmazonSQSAsyncClient}
 import sns.{client => snsClient, RichAmazonSNSAsyncClient}
 
@@ -14,20 +15,22 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-object AutoscalingNotificationsQueueWorker extends JsonQueueWorker[Notification] {
-  override val queue: JsonMessageQueue[Notification] =
-    JsonMessageQueue[Notification](
+object AutoscalingNotificationsQueueWorker extends JsonQueueWorker[sns.NotificationMessage] {
+  override val queue: JsonMessageQueue[sns.NotificationMessage] =
+    JsonMessageQueue[sns.NotificationMessage](
       new AmazonSQSAsyncClient().withRegion(Region.getRegion(Regions.EU_WEST_1)),
-      current.configuration.getString("autoscaling_notifications.queue_arn") getOrElse {
+      current.configuration.getString("autoscaling_notifications.queue_url") getOrElse {
         throw new RuntimeException("Required config property autoscaling_notifications.queue_arn not in config!")
       }
     )
 
-  override def process(message: Message[Notification]): Future[Unit] = {
-    val notification = message.get
+  override def process(message: Message[sns.NotificationMessage]): Future[Unit] = {
+    val notification = Json.fromJson[Notification](Json.parse(message.get.Message)) getOrElse {
+      throw new RuntimeException("Could not parse message body")
+    }
 
     if (notification.Event == Notification.TerminationEvent) {
-      val instanceId = InstanceId(notification.EC2InstanceId)
+      val instanceId = InstanceId(notification.EC2InstanceId.get)
 
       val ftr = for {
         arn <- StateTable.getSubscriptionArn(instanceId)
@@ -45,6 +48,7 @@ object AutoscalingNotificationsQueueWorker extends JsonQueueWorker[Notification]
 
       ftr
     } else {
+      logger.info(s"Ignoring ${notification.Event} event (${notification.RequestId})")
       Future.successful(())
     }
   }

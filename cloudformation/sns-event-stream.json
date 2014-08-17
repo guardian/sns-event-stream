@@ -138,12 +138,27 @@
                                 {
                                     "Effect": "Allow",
                                     "Action": [
-                                        "sns:Subscribe",
-                                        "sns:Unsubscribe"
+                                        "sns:Subscribe"
                                     ],
                                     "Resource": [
                                         {"Ref": "SnsTopic"}
                                     ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "subscriptionExpirations",
+
+                        "PolicyDocument": {
+                            "Version" : "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "sns:Unsubscribe"
+                                    ],
+                                    "Resource": "*"
                                 }
                             ]
                         }
@@ -382,10 +397,7 @@
                             "    --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to run cfn-init'\n",
 
                             "export SNS_TOPIC_ARN=", { "Ref": "SnsTopic" }, "\n",
-                            "export AUTOSCALING_NOTIFICATIONS_ARN=", { "Fn::GetAtt": [
-                                "AutoscalingNotificationsQueue",
-                                "Arn"
-                            ] }, "\n",
+                            "export AUTOSCALING_NOTIFICATIONS_URL=", {"Ref": "AutoscalingNotificationsQueue"}, "\n",
 
                             "export DYNAMO_DB_TABLE_NAME=", { "Ref": "DynamoDBTableName" }, "\n",
 

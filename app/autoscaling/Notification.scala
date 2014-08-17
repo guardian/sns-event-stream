@@ -9,21 +9,21 @@ object Notification {
 }
 
 case class Notification(
-  StatusCode: String,
+  StatusCode: Option[String],
   Service: String,
   AutoScalingGroupName: String,
-  Description: String,
-  ActivityId: String,
+  Description: Option[String],
+  ActivityId: Option[String],
   Event: String,
-  Details: Map[String, String],
+  Details: Option[Map[String, String]],
   AutoScalingGroupARN: String,
-  Progress: Int,
+  Progress: Option[Int],
   Time: String,
   AccountId: String,
   RequestId: String,
-  StatusMessage: String,
-  EndTime: String,
-  EC2InstanceId: String,
-  StartTime: String,
-  Cause: String
+  StatusMessage: Option[String],
+  EndTime: Option[String],
+  EC2InstanceId: Option[String],
+  StartTime: Option[String],
+  Cause: Option[String]
 )

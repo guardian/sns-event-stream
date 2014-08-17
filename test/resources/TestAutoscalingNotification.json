@@ -1,0 +1,9 @@
+{
+    "AutoScalingGroupName":"SnsToJsCODE-AutoscalingGroup-EHASV5VRV649",
+    "Service":"AWS Auto Scaling",
+    "Time":"2014-08-17T10:50:19.508Z",
+    "AccountId":"201359054765",
+    "Event":"autoscaling:TEST_NOTIFICATION",
+    "RequestId":"47d1de30-25fc-11e4-9216-732754e334ad",
+    "AutoScalingGroupARN":"arn:aws:autoscaling:eu-west-1:201359054765:autoScalingGroup:78c657ca-672e-4e1d-a830-c792a030c684:autoScalingGroupName/SnsToJsCODE-AutoscalingGroup-EHASV5VRV649"
+}
