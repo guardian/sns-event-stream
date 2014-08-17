@@ -1,6 +1,5 @@
 package sns
 
-import org.joda.time.DateTime
 import play.api.libs.json._
 import json.requireField
 
@@ -28,7 +27,7 @@ case class SubscriptionConfirmationMessage(
   TopicArn: String,
   Message: String,
   SubscribeURL: String,
-  Timestamp: DateTime,
+  Timestamp: String,
   SignatureVersion: String,
   Signature: String,
   SigningCertURL: String
@@ -45,7 +44,7 @@ case class NotificationMessage(
   TopicArn: String,
   Subject: String,
   Message: String,
-  Timestamp: DateTime,
+  Timestamp: String,
   SignatureVersion: String,
   Signature: String,
   SigningCertURL: String,

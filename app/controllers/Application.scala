@@ -35,7 +35,7 @@ object Application extends Controller with Logging {
     * that we're certain the only requests that come in are from SNS.
     */
   def broadcast = Action { implicit request =>
-    request.body.asJson.flatMap(json => Json.fromJson[SnsMessage](json).asOpt) match {
+    request.body.asText.flatMap(json => Json.fromJson[SnsMessage](Json.parse(json)).asOpt) match {
       case Some(message) => message match {
         case message: SubscriptionConfirmationMessage =>
           logger.info("Received subscription confirmation message:")
@@ -64,6 +64,7 @@ object Application extends Controller with Logging {
       }
 
       case None =>
+        logger.error(s"Body did not contain JSON ${request.body.toString}")
         BadRequest
     }
   }
