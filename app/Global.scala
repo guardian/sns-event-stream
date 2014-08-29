@@ -3,6 +3,7 @@ import com.amazonaws.services.sns.model.SubscribeRequest
 import grizzled.slf4j.Logging
 import play.api.mvc.{Result, Handler, RequestHeader}
 import play.api.{Application, GlobalSettings}
+import com.gu.awswrappers._
 
 import ec2._
 import sns._

@@ -6,8 +6,9 @@ import com.amazonaws.services.sqs.AmazonSQSAsyncClient
 import dynamodb.StateTable
 import ec2.InstanceId
 import play.api.libs.json.Json
-import sqs.{JsonMessageQueue, Message, JsonQueueWorker, RichAmazonSQSAsyncClient}
-import sns.{client => snsClient, RichAmazonSNSAsyncClient}
+import sqs.{JsonMessageQueue, Message, JsonQueueWorker}
+import sns.{client => snsClient}
+import com.gu.awswrappers._
 
 import play.api.Play.current
 
@@ -18,7 +19,11 @@ import scala.util.{Failure, Success}
 object AutoscalingNotificationsQueueWorker extends JsonQueueWorker[sns.NotificationMessage] {
   override val queue: JsonMessageQueue[sns.NotificationMessage] =
     JsonMessageQueue[sns.NotificationMessage](
-      new AmazonSQSAsyncClient().withRegion(Region.getRegion(Regions.EU_WEST_1)),
+      {
+        val client = new AmazonSQSAsyncClient()
+        client.setRegion(Region.getRegion(Regions.EU_WEST_1))
+        client
+      },
       current.configuration.getString("autoscaling_notifications.queue_url") getOrElse {
         throw new RuntimeException("Required config property autoscaling_notifications.queue_arn not in config!")
       }

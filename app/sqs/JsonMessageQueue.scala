@@ -3,6 +3,7 @@ package sqs
 import com.amazonaws.services.sqs.AmazonSQSAsyncClient
 import com.amazonaws.services.sqs.model._
 import play.api.libs.json.{Writes, Json, Reads}
+import com.gu.awswrappers._
 
 import scala.concurrent.{Future, ExecutionContext}
 import ExecutionContext.Implicits.global

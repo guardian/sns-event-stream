@@ -4,6 +4,7 @@ import com.amazonaws.regions.{Regions, Region}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.dynamodbv2.model._
 import ec2.InstanceId
+import com.gu.awswrappers.enrichDynamoDbClient
 
 import play.api.Play.current
 import sns.SnsSubscriptionArn
