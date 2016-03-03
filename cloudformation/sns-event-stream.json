@@ -379,6 +379,7 @@
                             "add-apt-repository ppa:webupd8team/java\n",
 
                             "apt-get -y update\n",
+                            "apt-get -y upgrade\n",
 
                             "locale-gen en_GB.UTF-8\n",
 
